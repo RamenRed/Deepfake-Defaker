@@ -1,7 +1,6 @@
 from torch import *
 from torchvision import *
 
-
 # =======================================================
 #                 Initial Parameters
 # =======================================================
@@ -22,7 +21,7 @@ use_cuda = torch.cuda.is_available()
 #                  Helper Functions
 # =======================================================
 
-def model_probability_opinion(): # Used to calculate how many times out of 20 the discriminator detected an image as fake
+def model_probability_opinion(dfd): # Used to calculate how many times out of 20 the discriminator detected an image as fake
     dfd_average = 0 # Initial value of zero
     cycle_count = 0
     while cycle_count < 20:
