@@ -21,13 +21,17 @@ use_cuda = torch.cuda.is_available()
 #                  Helper Functions
 # =======================================================
 
-def model_probability_opinion(dfd): # Used to calculate how many times out of 20 the discriminator detected an image as fake
+def model_probability_opinion(opinions: list): # Used to calculate how many times out of length(opinions) the discriminator detected an image as fake
     dfd_average = 0 # Initial value of zero
     cycle_count = 0
-    while cycle_count < 20:
-        # If discriminator.decision == FALSE; dfd_average++
+    while cycle_count < len(opinions):
+        if opinions[cycle_count] == False:
+            dfd_average += 1
         cycle_count += 1
-    return dfd_average/20
+    return dfd_average/len(opinions)
+
+def gan_logic(dfg, dfd):
+    pass
 
 # =======================================================
 #                      Models
@@ -50,3 +54,4 @@ class Defaker_discriminator(nn.Module):
 if __name__=="__main__":
     dfg = Defaker_generator()
     dfd = Defaker_discriminator()
+    dfd_opinions: list = []
