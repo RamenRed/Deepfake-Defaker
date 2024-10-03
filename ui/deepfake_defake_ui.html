@@ -1,2 +1,22 @@
 <!--See app > defaker_api.py for endpoints-->
 <!--If additional endpoints are needed, comment the line and I will make them-->
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Deepfake Defaker</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    </head>
+    <body>
+        <form action="/image">
+            <div class="container">
+                <h1>Input Image</h1>
+                <label for="in_image">Image to evaluate:</label>
+                <input type="image" id="in_image" name="in_image"><br><br>
+                <img src="in_image" class="thumbnail">
+            </div>
+        </form>
+    </body>
+</html>
