@@ -11,7 +11,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 </head>
-
 <body>
     <!--This is code is the section relating to Nav (navigation) bar-->
     <nav class="navbar navbar-expand-lg bg-light">
@@ -52,8 +51,15 @@
                     <label for="formFile" class="form-label">Default file input example</label>
                     <input class="form-control" type="file" id="formFile">
                 </div>
-                <span class="text-danger mx-5 mb-5 ">Hello here is the text you wnated to preview</span>
-                <button type="submit" class="btn btn-primary mx-5 my-3">Submit</button>
+                <button id="submit-image" type="submit" class="btn btn-primary mx-5 my-3">Submit</button>
+                <span class="text-danger mx-5 mb-5 ">AI Generated: <var id="opinionDisplay">0 </var>% likelihood</span>
+                
+                <!--Current value set to 25 for testing. When API is finished, it will call model's opinion value-->
+                <script src="./deepfaker_script.js" >
+                    document.getElementById("submit-image").onclick = function() {
+                        document.getElementById("opinionDisplay").innerHTML = 25;
+                    };
+                </script>
             </div>
         </div>
     </form>
