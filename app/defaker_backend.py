@@ -97,7 +97,7 @@ class Defaker_discriminator(nn.Module):
             nn.Conv2d(64 * 4, 64 * 8, 4, 2, 1, bias=False),
             nn.BatchNorm2d(64 * 8),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
+            nn.Conv2d(8 * 8, 1, 4, 1, 0, bias=False),
             nn.Sigmoid()
         )
 
