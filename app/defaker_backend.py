@@ -37,6 +37,7 @@ device = torch.device("cuda:0" if (torch.cuda.is_available() and num_gpu > 0) el
 
 torch.use_deterministic_algorithms(False)
 
+
 # =======================================================
 #                  Helper Functions
 # =======================================================
@@ -60,6 +61,7 @@ def gan_logic(dfg, dfd):
 class Defaker_generator(nn.Module):
     def __init__(self, image_data: list[Tensor], num_gpu):
         super(Generator, self).__init__(self, image_data, num_gpu)
+        optimizer = opt.Adam(self.parameters(), l_rate)
         self.num_gpu = num_gpu
         self.image_data = image_data
         self.model = nn.Sequential(
@@ -83,6 +85,7 @@ class Defaker_generator(nn.Module):
 class Defaker_discriminator(nn.Module):
     def __init__(self, d_noise, image_data: list[Tensor], num_gpu):
         super().__init__(self, d_noise, image_data, num_gpu)
+        optimizer = opt.Adam(self.parameters(), l_rate)
         self.num_gpu = num_gpu
         self.image_data = image_data
         self.model = nn.Sequential(
