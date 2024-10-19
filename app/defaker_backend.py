@@ -1,4 +1,5 @@
 from torch import *
+import torch
 import torch.nn as nn
 import torch.nn.parallel
 import torch.optim as opt
@@ -35,8 +36,14 @@ num_gpu = 1
 # Decide what the device will run
 device = torch.device("cuda:0" if (torch.cuda.is_available() and num_gpu > 0) else "cpu")
 
+# Prevent deterministic outputs and algorithms
 torch.use_deterministic_algorithms(False)
 
+# Number of examples
+num_examples = 32
+
+# Random seed for use
+r_seed = torch.normal(num_examples, d_noise)
 
 # =======================================================
 #                  Helper Functions
@@ -54,6 +61,18 @@ def model_probability_opinion(opinions: list): # Used to calculate how many time
 def gan_logic(dfg, dfd):
     pass
 
+x_entropy = nn.CrossEntropyLoss()
+
+
+def trainer_function(images, train_load, model):
+    noise = torch.normal(num_examples, d_noise)
+    for epoch in range(tot_epochs):
+        run_loss = 0
+        prev_loss = 0
+        for i, data in enumerate(train_load):
+            inputs, labels = data
+            # Not done
+
 # =======================================================
 #                      Models
 # =======================================================
@@ -67,25 +86,28 @@ class Defaker_generator(nn.Module):
         self.model = nn.Sequential(
             nn.ConvTranspose2d(100, 64 * 8, 4, 1, 0, bias=False),
             nn.BatchNorm2d(64 * 8),
-            nn.ReLU(True),
+            nn.LeakyReLU(True),
             nn.ConvTranspose2d(64 * 8, 64 * 4, 4, 2, 1, bias=False),
             nn.BatchNorm2d(64 * 4),
-            nn.ReLU(True),
+            nn.LeakyReLU(True),
             nn.ConvTranspose2d(64 * 4, 64 * 2, 4, 2, 1, bias=False),
             nn.BatchNorm2d(64 * 2),
-            nn.ReLU(True),
+            nn.LeakyReLU(True),
             nn.ConvTranspose2d(64 * 2, 64, 4, 2, 1, bias=False),
             nn.BatchNorm2d(64),
-            nn.ReLU(True),
+            nn.LeakyReLU(True),
             nn.ConvTranspose2d(64, 3, 4, 2, 1, bias=False),
             nn.Tanh()
         )
+
+    def loss(fake):
+        return x_entropy(torch.ones_like(fake), fake)
         
 
 class Defaker_discriminator(nn.Module):
     def __init__(self, d_noise, image_data: list[Tensor], num_gpu):
         super().__init__(self, d_noise, image_data, num_gpu)
-        optimizer = opt.Adam(self.parameters(), l_rate)
+        self.optimizer = opt.Adam(self.parameters(), l_rate)
         self.num_gpu = num_gpu
         self.image_data = image_data
         self.model = nn.Sequential(
@@ -103,6 +125,12 @@ class Defaker_discriminator(nn.Module):
             nn.Conv2d(8 * 8, 1, 4, 1, 0, bias=False),
             nn.Sigmoid()
         )
+    
+    def loss(real, fake):
+        r_loss = x_entropy(torch.ones_like(real), real)
+        f_loss = x_entropy(torch.zeros_like(fake), fake)
+        t_loss = r_loss + f_loss
+        return f_loss
 
 # =======================================================
 
