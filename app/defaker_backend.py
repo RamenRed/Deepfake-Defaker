@@ -63,16 +63,6 @@ def gan_logic(dfg, dfd):
 
 x_entropy = nn.CrossEntropyLoss()
 
-
-def trainer_function(images, train_load, model):
-    noise = torch.normal(num_examples, d_noise)
-    for epoch in range(tot_epochs):
-        run_loss = 0
-        prev_loss = 0
-        for i, data in enumerate(train_load):
-            inputs, labels = data
-            # Not done
-
 # =======================================================
 #                      Models
 # =======================================================
@@ -131,6 +121,17 @@ class Defaker_discriminator(nn.Module):
         f_loss = x_entropy(torch.zeros_like(fake), fake)
         t_loss = r_loss + f_loss
         return f_loss
+    
+    def trainer_function(self, images, train_load):
+        noise = torch.normal(num_examples, d_noise)
+        for epoch in range(tot_epochs):
+            run_loss = 0
+            prev_loss = 0
+            for i, data in enumerate(train_load):
+                inputs, labels = data
+                self.optimizer.zero_grad()
+                out_images = Defaker_discriminator(image_data=images)
+                loss = x_entropy
 
 # =======================================================
 
