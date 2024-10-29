@@ -12,9 +12,11 @@ app = FastAPI()
 # =================================================================================
 #                         Helper Functions
 # =================================================================================
-@app.get("/endpoint/template")
-async def api_function_template():
-    return "This is an example of an API endpoint"
+
+
+#@app.get("/endpoint/template")
+#async def api_function_template():
+#    return "This is an example of an API endpoint"
 
 def setup_kaggle_api():
     """
