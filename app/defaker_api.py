@@ -111,18 +111,18 @@ def get_van_gogh_paintings():
         return [], []
 
 
-if __name__ == "__main__":
-    
-    image_arrays, image_names = get_van_gogh_paintings()
-    
-    # Example of accessing the loaded images
-    if image_arrays:
-        print("\nFirst few images loaded:")
-        for i in range(min(3, len(image_arrays))):
-            print(f"Image: {image_names[i]}")
-            print(f"Shape: {image_arrays[i].shape}")
-            print(f"Data type: {image_arrays[i].dtype}")
-            print("---")
+#if __name__ == "__main__":
+#    
+#    image_arrays, image_names = get_van_gogh_paintings()
+#    
+#    # Example of accessing the loaded images
+#    if image_arrays:
+#        print("\nFirst few images loaded:")
+#        for i in range(min(3, len(image_arrays))):
+#            print(f"Image: {image_names[i]}")
+#            print(f"Shape: {image_arrays[i].shape}")
+#            print(f"Data type: {image_arrays[i].dtype}")
+#            print("---")
 
 # =================================================================================
 #                           Endpoints for GAN classes

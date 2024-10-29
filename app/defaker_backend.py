@@ -10,6 +10,9 @@ import torchvision.transforms as tv_transforms
 import torchvision.utils as vutils
 import numpy as np
 import random
+import app.defaker_api as df_api
+
+# With help from https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html
 
 # =======================================================
 #                 Initial Parameters
@@ -25,7 +28,7 @@ tot_epochs = 50
 max_batch_size = 512
 
 # Rate of Learning
-l_rate = 0.01
+l_rate = 0.001
 
 # Check if NVIDIA GPU is available for use
 use_cuda = torch.cuda.is_available()
@@ -45,6 +48,9 @@ num_examples = 32
 # Random seed for use
 r_seed = torch.normal(num_examples, d_noise)
 
+# Load training images
+image_arrays, image_names = df_api.get_van_gogh_paintings()
+
 # =======================================================
 #                  Helper Functions
 # =======================================================
@@ -63,6 +69,13 @@ def gan_logic(dfg, dfd):
 
 x_entropy = nn.CrossEntropyLoss()
 
+def weights_init(weights_inst):
+    c_name = weights_inst.__class__.__name__
+    if c_name.find('Conv') != -1:
+        nn.init.normal_(weights_inst.weight.data, 0.0, 0.02)
+    elif c_name.find('BatchNorm') != -1:
+        nn.init.normal_(weights_inst.weight.data, 1.0, 0.02)
+        nn.init.constant_(weights_inst.bias.data, 0)
 # =======================================================
 #                      Models
 # =======================================================
@@ -92,7 +105,9 @@ class Defaker_generator(nn.Module):
 
     def loss(fake):
         return x_entropy(torch.ones_like(fake), fake)
-        
+    
+    def gen_forward(self, gen_in):
+        return self.model(gen_in)
 
 class Defaker_discriminator(nn.Module):
     def __init__(self, d_noise, image_data: list[Tensor], num_gpu):
@@ -116,6 +131,9 @@ class Defaker_discriminator(nn.Module):
             nn.Sigmoid()
         )
     
+    def discrim_forward(self, discrim_in):
+        return self.model(discrim_in)
+    
     def loss(real, fake):
         r_loss = x_entropy(torch.ones_like(real), real)
         f_loss = x_entropy(torch.zeros_like(fake), fake)
@@ -128,14 +146,32 @@ class Defaker_discriminator(nn.Module):
             run_loss = 0
             prev_loss = 0
             for i, data in enumerate(train_load):
+
+                #Real image batch
                 inputs, labels = data
                 self.optimizer.zero_grad()
                 out_images = Defaker_discriminator(image_data=images)
                 loss = x_entropy
 
+                
+                
+
+                
+
 # =======================================================
 
 if __name__=="__main__":
-    dfg = Defaker_generator()
-    dfd = Defaker_discriminator()
+    dfg = Defaker_generator().to(device)
+    dfd = Defaker_discriminator().to(device)
+
+    # Setup use of multiple GPU's if present and capable for Discriminator and Generator 
+    if (device.type == "cuda") and (num_examples >1):
+        dfg = torch.nn.parallel.DistributedDataParallel
+    if (device.type == "cuda") and (num_examples >1):
+        dfd = torch.nn.parallel.DistributedDataParallel
+
+    # Initialize Weights
+    dfg.apply(weights_init)
+    dfd.apply(weights_init)
+
     dfd_opinions: list = []
