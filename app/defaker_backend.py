@@ -140,7 +140,7 @@ class Defaker_discriminator(nn.Module):
         t_loss = r_loss + f_loss
         return f_loss
     
-    def trainer_function(self, images, train_load):
+    def trainer_function(self, images, train_load, real, fake):
         noise = torch.normal(num_examples, d_noise)
         for epoch in range(tot_epochs):
             run_loss = 0
@@ -150,8 +150,19 @@ class Defaker_discriminator(nn.Module):
                 #Real image batch
                 inputs, labels = data
                 self.optimizer.zero_grad()
+                r_cpu = data[0].to(device)
+                b_size = r_cpu.size(0)
                 out_images = Defaker_discriminator(image_data=images)
                 loss = x_entropy
+                loss.backward()
+                D_x = out_images.mean().item()
+
+                #Fake image batch
+                noise = torch.randn(b_size, 1, 1, device=device)
+                fakers = Defaker_generator(noise)
+
+                out_images = Defaker_discriminator(fake.detach()).view(-1)
+
 
                 
                 
