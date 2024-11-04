@@ -57,8 +57,10 @@
                 <!--Current value set to 25 for testing. When API is finished, it will call model's opinion value-->
                 <script src="./deepfaker_script.js" >
                     document.getElementById("submit-image").onclick = function() {
-                        // Integer value from:       def run_model(image)
+                        // Integer value from:       def run_model_with_image(image)        @app.get("/model/{image}") --> Endpoint
                         var model_opinion_int = 25;
+
+
                         document.getElementById("opinionDisplay").innerHTML = model_opinion_int;
                     };
                 </script>

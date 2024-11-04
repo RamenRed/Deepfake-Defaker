@@ -150,9 +150,8 @@ class Defaker_discriminator(nn.Module):
     
 
 
-r_label = 1    
-f_label = 0
-def trainer_function(dfd: Defaker_discriminator, dfg: Defaker_generator,images, train_load, real, fake):
+
+def trainer_function(dfd: Defaker_discriminator, dfg: Defaker_generator, images: list[Tensor], train_load, fake):
     noise = torch.normal(num_examples, d_noise)
     Gen_losses = []
     Disc_losses = []
@@ -166,7 +165,7 @@ def trainer_function(dfd: Defaker_discriminator, dfg: Defaker_generator,images, 
             dfd.zero_grad()
             r_cpu = data[0].to(device)
             b_size = r_cpu.size(0)
-            label = torch.full((b_size,), r_label, dtype = torch.float, device=device)
+            label = torch.full((b_size,), dtype = torch.float, device=device)
             out_images = dfd(image_data=images)
             r_loss = x_entropy
             r_loss.backward()
@@ -246,5 +245,9 @@ def run_model(image):
     # Initialize Weights
     dfg.apply(weights_init)
     dfd.apply(weights_init)
-
+    
+    tensors_from_imgs: list = [Tensor]
+    for i in image_arrays:
+        tensors_from_imgs.append(img_to_tensor(i))
+    trainer_function(dfd, dfg, tensors_from_imgs, )
     dfd_opinions: list = []
