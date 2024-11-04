@@ -18,6 +18,11 @@ app = FastAPI()
 #async def api_function_template():
 #    return "This is an example of an API endpoint"
 
+@app.get("/model/{image}")
+async def run_model_with_image(image):
+    return_int = df.run_model(image)        #User submited image to call 
+    return return_int
+
 def setup_kaggle_api():
     """
     Initialize and authenticate Kaggle API

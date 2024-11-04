@@ -67,6 +67,14 @@ def model_probability_opinion(opinions: list): # Used to calculate how many time
 def gan_logic(dfg, dfd):
     pass
 
+def img_to_tensor(image):
+    t_form = transforms.Compose([
+        transforms.Resize((256,256)),
+        transforms.ToTensor()
+    ])
+    t_img = t_form(image)
+    return t_img
+
 x_entropy = nn.CrossEntropyLoss()
 
 def weights_init(weights_inst):
@@ -140,28 +148,82 @@ class Defaker_discriminator(nn.Module):
         t_loss = r_loss + f_loss
         return f_loss
     
-    def trainer_function(self, images, train_load, real, fake):
-        noise = torch.normal(num_examples, d_noise)
-        for epoch in range(tot_epochs):
-            run_loss = 0
-            prev_loss = 0
-            for i, data in enumerate(train_load):
 
-                #Real image batch
-                inputs, labels = data
-                self.optimizer.zero_grad()
-                r_cpu = data[0].to(device)
-                b_size = r_cpu.size(0)
-                out_images = Defaker_discriminator(image_data=images)
-                loss = x_entropy
-                loss.backward()
-                D_x = out_images.mean().item()
 
-                #Fake image batch
-                noise = torch.randn(b_size, 1, 1, device=device)
-                fakers = Defaker_generator(noise)
+r_label = 1    
+f_label = 0
+def trainer_function(dfd: Defaker_discriminator, dfg: Defaker_generator,images, train_load, real, fake):
+    noise = torch.normal(num_examples, d_noise)
+    Gen_losses = []
+    Disc_losses = []
+    for epoch in range(tot_epochs):
+        run_loss = 0
+        prev_loss = 0
+        for i, data in enumerate(train_load):
 
-                out_images = Defaker_discriminator(fake.detach()).view(-1)
+            #Real image batch
+            inputs, labels = data
+            dfd.zero_grad()
+            r_cpu = data[0].to(device)
+            b_size = r_cpu.size(0)
+            label = torch.full((b_size,), r_label, dtype = torch.float, device=device)
+            out_images = dfd(image_data=images)
+            r_loss = x_entropy
+            r_loss.backward()
+            D_x = out_images.mean().item()
+
+            #Fake image batch
+            noise = torch.randn(b_size, 1, 1, device=device)
+            fakers = dfg(noise)
+            
+            label.fill_(f_label)
+
+            out_images = dfd(fakers.detach()).view(-1)
+
+            f_loss = x_entropy
+            f_loss.backward()
+
+            D_G_z1 = out_images.mean().item()
+
+            d_loss = r_loss + f_loss
+
+            dfd.optimizer.step()
+
+            dfg.zero_grad()
+
+            out_images = dfd(fakers).view(-1)
+
+
+            g_loss = x_entropy(out_images)
+            g.backward()
+
+            D_G_z2 = out_images.mean().item()
+
+            
+            dfg.optimizer.step()
+            
+
+            if i % 50 == 0:
+                print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
+                % (epoch, tot_epochs, i, len(train_load),
+                d_loss.item(), g_loss.item(), D_x, D_G_z1, D_G_z2))
+            
+            Gen_losses.append(g_loss.item())
+            Disc_losses.append(d_loss.item())
+
+            if (iters % 500 == 0) or ((epoch == tot_epochs-1) and (i == len(train_load)-1)):
+                with torch.no_grad():
+                    fake = dfg(noise).detach().cpu()
+                images.append(vutils.make_grid(fake, padding=2, normalize=True))
+
+            iters += 1
+
+                
+                
+
+
+
+
 
 
                 
@@ -171,7 +233,7 @@ class Defaker_discriminator(nn.Module):
 
 # =======================================================
 
-if __name__=="__main__":
+def run_model(image):
     dfg = Defaker_generator().to(device)
     dfd = Defaker_discriminator().to(device)
 
