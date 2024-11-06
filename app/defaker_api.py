@@ -4,24 +4,59 @@ from kaggle.api.kaggle_api_extended import KaggleApi
 from PIL import Image
 import numpy as np # type: ignore
 import zipfile
-from fastapi import FastAPI
+from pathlib import Path
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from typing import Union
+from fastapi.responses import HTMLResponse
 import app.defaker_backend as df
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:8000"],  # Replace with your frontend origin
+    allow_methods=["POST"],
+    allow_headers=["*"],
+)
 
 # =================================================================================
 #                         Helper Functions
 # =================================================================================
 
 
-#@app.get("/endpoint/template")
-#async def api_function_template():
-#    return "This is an example of an API endpoint"
 
-@app.get("/model/{image}")
-async def run_model_with_image(image):
-    return_int = df.run_model(image)        #User submited image to call 
-    return return_int
+@app.get("/",response_class=HTMLResponse)
+def read_root():
+    return """
+        <html>
+            <body>
+                <h2>Type /model</h2>
+            </body>
+        </html>
+    """
+
+UPLOAD_FOLDER = Path("uploads") 
+UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+
+
+@app.post("/model")
+async def run_model_with_image(file: UploadFile = File(...)):
+    file_location = UPLOAD_FOLDER / file.filename  
+    try:
+        with open(file_location, "wb") as f:
+            f.write(await file.read())
+        return {"model_opinion_int": 42, "file_path": str(file_location)}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error saving file: {e}")
+
+# @app.post("/model")
+# async def run_model_with_image(image):
+    # return {"Hello": "World"}
+    # return_int = df.run_model(image)        # User submited image to call 
+    # return return_int
 
 def setup_kaggle_api():
     """
@@ -116,18 +151,18 @@ def get_van_gogh_paintings():
         return [], []
 
 
-#if __name__ == "__main__":
-#    
-#    image_arrays, image_names = get_van_gogh_paintings()
-#    
-#    # Example of accessing the loaded images
-#    if image_arrays:
-#        print("\nFirst few images loaded:")
-#        for i in range(min(3, len(image_arrays))):
-#            print(f"Image: {image_names[i]}")
-#            print(f"Shape: {image_arrays[i].shape}")
-#            print(f"Data type: {image_arrays[i].dtype}")
-#            print("---")
+if __name__ == "__main__":
+   
+   image_arrays, image_names = get_van_gogh_paintings()
+   
+   # Example of accessing the loaded images
+   if image_arrays:
+       print("\nFirst few images loaded:")
+       for i in range(min(3, len(image_arrays))):
+           print(f"Image: {image_names[i]}")
+           print(f"Shape: {image_arrays[i].shape}")
+           print(f"Data type: {image_arrays[i].dtype}")
+           print("---")
 
 # =================================================================================
 #                           Endpoints for GAN classes
