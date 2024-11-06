@@ -1,28 +1,19 @@
-<!--See app > defaker_api.py for endpoints-->
-<!--If additional endpoints are needed, comment the line and I will make them-->
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <title>Deepfake Defaker</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
 </head>
 <body>
-    <!--This is code is the section relating to Nav (navigation) bar-->
     <nav class="navbar navbar-expand-lg bg-light">
         <div class="container">
             <a class="navbar-brand" href="#">Deepfake Defaker</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-                data-bs-target="#navbarTogglerDemo02" aria-controls="navbarTogglerDemo02" aria-expanded="false"
-                aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarTogglerDemo02" aria-controls="navbarTogglerDemo02" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-
-            <!--This is code related to closing navbar-->
             <div class="collapse navbar-collapse" id="navbarTogglerDemo02">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
@@ -37,46 +28,71 @@
         </div>
     </nav>
 
-    <!--This section of code hosts the text asking for users can upload their photo/images.-->
     <form>
         <div class="row justify-content-center d-flex mt-5 mb-4">
-            <div class="col col-4 bg-light shadow ">
+            <div class="col col-4 bg-light shadow">
                 <h5 class="card-title m-5 text-center text-primary">Please Add the image to Analyze</h5>
-                <div class=" justify-content-center d-flex m-5">
-                    <img src="" alt="" class="img-thumbnail" style="border:1px solid rgb(135, 135, 135); " id="imagePreview">
+                <div class="justify-content-center d-flex m-5">
+                    <img src="" alt="" class="img-thumbnail" style="border:1px solid rgb(135, 135, 135);" id="imagePreview">
                 </div>
-
-                <!--This is the section in the forum which users actually upload their photo/image.-->
                 <div class="mb-3 m-5">
-                    <label for="formFile" class="form-label">Default file input example</label>
+                    <label for="formFile" class="form-label">Upload an Image</label>
                     <input class="form-control" type="file" id="formFile">
                 </div>
-                <button id="submit-image" type="submit" class="btn btn-primary mx-5 my-3">Submit</button>
-                <span class="text-danger mx-5 mb-5 ">AI Generated: <var id="opinionDisplay">0 </var>% likelihood</span>
-                
-                <!--Current value set to 25 for testing. When API is finished, it will call model's opinion value-->
-                <script src="./deepfaker_script.js" >
-                    document.getElementById("submit-image").onclick = function() {
-                        // Integer value from:       def run_model_with_image(image)        @app.get("/model/{image}") --> Endpoint
-                        var model_opinion_int = 25;
-
-
-                        document.getElementById("opinionDisplay").innerHTML = model_opinion_int;
-                    };
-                </script>
+                <button id="submit-image" type="button" class="btn btn-primary mx-5 my-3">Submit</button>
+                <span class="text-danger mx-5 mb-5">AI Generated: <var id="opinionDisplay">0</var>% likelihood</span>
             </div>
         </div>
     </form>
-    <script src="./deepfaker_script.js" ></script>
+
+    <script>
+        // Preview selected image
+        let imageInput = document.getElementById("formFile");
+        const img = document.getElementById("imagePreview");
+        imageInput.addEventListener("change", function() {
+            const choosedFile = this.files[0];
+            if (choosedFile) {
+                const reader = new FileReader();
+                reader.addEventListener('load', function() {
+                    img.setAttribute('src', reader.result);
+                });
+                reader.readAsDataURL(choosedFile);
+            }
+        });
+
+        // Handle image submission and display AI likelihood score
+        document.getElementById("submit-image").onclick = async function() {
+            const fileInput = document.getElementById("formFile");
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert("Please select an image first.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                const response = await fetch("http://localhost:8000/model", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+                document.getElementById("opinionDisplay").innerHTML = data.model_opinion_int;
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        };
+    </script>
     <style>
-
         body {
-          background-image: url('background.jpg');
-          background-repeat: no-repeat;
-          background-attachment: fixed;
-          background-size: cover;
+            background-image: url('background.jpg');
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-size: cover;
         }
-        </style>
+    </style>
 </body>
-
 </html>
