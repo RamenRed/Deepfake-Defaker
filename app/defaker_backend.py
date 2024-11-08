@@ -62,7 +62,7 @@ def model_probability_opinion(opinions: list): # Used to calculate how many time
         if opinions[cycle_count] == False:
             dfd_average += 1
         cycle_count += 1
-    return dfd_average/len(opinions)
+    return (dfd_average/len(opinions)) * 100
 
 def gan_logic(dfg, dfd):
     pass
@@ -175,7 +175,7 @@ def trainer_function(dfd: Defaker_discriminator, dfg: Defaker_generator, images:
             noise = torch.randn(b_size, 1, 1, device=device)
             fakers = dfg(noise)
             
-            label.fill_(f_label)
+            label.fill_(fake)
 
             out_images = dfd(fakers.detach()).view(-1)
 
@@ -194,7 +194,7 @@ def trainer_function(dfd: Defaker_discriminator, dfg: Defaker_generator, images:
 
 
             g_loss = x_entropy(out_images)
-            g.backward()
+            g_loss.backward()
 
             D_G_z2 = out_images.mean().item()
 
