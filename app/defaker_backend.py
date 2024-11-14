@@ -203,33 +203,17 @@ def trainer_function(dfd: Defaker_discriminator, dfg: Defaker_generator, dataloa
             d_loss_total = d_loss_real + d_loss_fake
 
             #Fake image batch
-            
-            
-            
+            dfg.optimizer.zero_grad()
+            label.fill_(1)
+            output = dfd(fakers)
 
-            out_images = dfd(fakers.detach()).view(-1)
-
-            f_loss = x_entropy
-            f_loss.backward()
-
-            D_G_z1 = out_images.mean().item()
-
-            d_loss = r_loss + f_loss
-
-            dfd.optimizer.step()
-
-            dfg.zero_grad()
-
-            out_images = dfd(fakers).view(-1)
-
-
-            g_loss = x_entropy(out_images)
+            g_loss = x_entropy(output, label)
             g_loss.backward()
-
-            D_G_z2 = out_images.mean().item()
+            dfg.optimizer.step()
+            
+            
 
             
-            dfg.optimizer.step()
             
 
             if i % 50 == 0:
