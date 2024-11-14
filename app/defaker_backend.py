@@ -11,6 +11,8 @@ import torchvision.utils as vutils
 import numpy as np
 import random
 import app.defaker_api as df_api
+import torch.utils.data.dataloader as torchDL
+import torch.utils.data.dataset as torchDS
 
 # With help from https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html
 
@@ -75,7 +77,34 @@ def img_to_tensor(image):
     t_img = t_form(image)
     return t_img
 
-x_entropy = nn.CrossEntropyLoss()
+def tensor_array(images: list):
+    tens_arr = []
+    for each in images:
+        t_add = img_to_tensor(each)
+        tens_arr.append(t_add)
+    return tens_arr
+
+class images_data(torchDS):
+    def __init__(self, images, transform=None, device=None):
+        self.images = images
+        self.transform = transform
+        self.device = device
+
+    def __len__(self):
+        return len(self.images)
+    
+
+    def __getitem__(self, idx):
+        image = self.images[idx]
+
+        i_to_t = img_to_tensor(image, device=self.device)
+        return i_to_t
+
+
+dataset = images_data(image_arrays, device=device)
+dataloader = torchDL(dataset, batch_size=1, shuffle=True, num_workers=4)
+
+x_entropy = nn.BCELoss()
 
 def weights_init(weights_inst):
     c_name = weights_inst.__class__.__name__
@@ -89,11 +118,9 @@ def weights_init(weights_inst):
 # =======================================================
 
 class Defaker_generator(nn.Module):
-    def __init__(self, image_data: list[Tensor], num_gpu):
-        super(Generator, self).__init__(self, image_data, num_gpu)
+    def __init__(self):
+        super(Defaker_generator, self).__init__(self)
         optimizer = opt.Adam(self.parameters(), l_rate)
-        self.num_gpu = num_gpu
-        self.image_data = image_data
         self.model = nn.Sequential(
             nn.ConvTranspose2d(100, 64 * 8, 4, 1, 0, bias=False),
             nn.BatchNorm2d(64 * 8),
@@ -114,15 +141,13 @@ class Defaker_generator(nn.Module):
     def loss(fake):
         return x_entropy(torch.ones_like(fake), fake)
     
-    def gen_forward(self, gen_in):
+    def forward(self, gen_in):
         return self.model(gen_in)
 
 class Defaker_discriminator(nn.Module):
-    def __init__(self, d_noise, image_data: list[Tensor], num_gpu):
-        super().__init__(self, d_noise, image_data, num_gpu)
+    def __init__(self):
+        super(Defaker_discriminator, self).__init__(self)
         self.optimizer = opt.Adam(self.parameters(), l_rate)
-        self.num_gpu = num_gpu
-        self.image_data = image_data
         self.model = nn.Sequential(
             nn.Conv2d(3, 64, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
@@ -139,7 +164,7 @@ class Defaker_discriminator(nn.Module):
             nn.Sigmoid()
         )
     
-    def discrim_forward(self, discrim_in):
+    def forward(self, discrim_in):
         return self.model(discrim_in)
     
     def loss(real, fake):
@@ -151,31 +176,36 @@ class Defaker_discriminator(nn.Module):
 
 
 
-def trainer_function(dfd: Defaker_discriminator, dfg: Defaker_generator, images: list[Tensor], train_load, fake):
-    noise = torch.normal(num_examples, d_noise)
+def trainer_function(dfd: Defaker_discriminator, dfg: Defaker_generator, dataloader):
+    noise = torch.randn(max_batch_size, d_noise, 1, 1, device=device)
     Gen_losses = []
     Disc_losses = []
     for epoch in range(tot_epochs):
-        run_loss = 0
-        prev_loss = 0
-        for i, data in enumerate(train_load):
+        for i, real_images in enumerate(dataloader):
+            
+            real_images = real_images.to(device)
 
             #Real image batch
-            inputs, labels = data
-            dfd.zero_grad()
-            r_cpu = data[0].to(device)
-            b_size = r_cpu.size(0)
-            label = torch.full((b_size,), dtype = torch.float, device=device)
-            out_images = dfd(image_data=images)
-            r_loss = x_entropy
-            r_loss.backward()
-            D_x = out_images.mean().item()
+            dfd.optimizer.zero_grad()
+            label = torch.ones(real_images.size(0), device=device)
+            output = dfd(real_images)
+            d_loss_real = x_entropy(output, label)
+            d_loss_real.backward
+
+            noise = torch.randn(real_images.size(0), d_noise, 1, 1, device=device)
+            fakers = dfg(noise)
+            label.fill_(0)
+            output = dfd(fakers.detach())
+
+            d_loss_fake = x_entropy(output, label)
+            d_loss_fake.backward()
+            
+            d_loss_total = d_loss_real + d_loss_fake
 
             #Fake image batch
-            noise = torch.randn(b_size, 1, 1, device=device)
-            fakers = dfg(noise)
             
-            label.fill_(fake)
+            
+            
 
             out_images = dfd(fakers.detach()).view(-1)
 
@@ -215,20 +245,7 @@ def trainer_function(dfd: Defaker_discriminator, dfg: Defaker_generator, images:
                     fake = dfg(noise).detach().cpu()
                 images.append(vutils.make_grid(fake, padding=2, normalize=True))
 
-            iters += 1
-
-                
-                
-
-
-
-
-
-
-                
-                
-
-                
+            iters += 1        
 
 # =======================================================
 
@@ -246,8 +263,7 @@ def run_model(image):
     dfg.apply(weights_init)
     dfd.apply(weights_init)
     
-    tensors_from_imgs: list = [Tensor]
-    for i in image_arrays:
-        tensors_from_imgs.append(img_to_tensor(i))
-    trainer_function(dfd, dfg, tensors_from_imgs, )
+    tensors_from_imgs: list = tensor_array(image_arrays)
+    
+    trainer_function(dfd, dfg, dataloader)
     dfd_opinions: list = []
