@@ -8,9 +8,19 @@ from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from typing import Union
 from fastapi.responses import HTMLResponse
-import app.defaker_backend as df
+# import app.defaker_backend as df
 
 from fastapi.middleware.cors import CORSMiddleware
+
+import sys
+## Adding dataset_utils to the system path so we can import it
+
+
+MY_UTILS_PATH = 'F:/GitHub/Deepfake-Defaker/app'
+if not MY_UTILS_PATH in sys.path:
+    sys.path.append(MY_UTILS_PATH)
+import defaker_backend as df
+
 
 app = FastAPI()
 

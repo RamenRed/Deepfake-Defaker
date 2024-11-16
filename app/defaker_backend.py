@@ -10,9 +10,21 @@ import torchvision.transforms as tv_transforms
 import torchvision.utils as vutils
 import numpy as np
 import random
-import app.defaker_api as df_api
-import torch.utils.data.dataloader as torchDL
-import torch.utils.data.dataset as torchDS
+
+import sys
+
+MY_UTILS_PATH = 'F:/GitHub/Deepfake-Defaker/app'
+if not MY_UTILS_PATH in sys.path:
+    sys.path.append(MY_UTILS_PATH)
+import defaker_api as df_api
+
+
+#import app.defaker_api as df_api
+#import torch.utils.data.dataloader as torchDL
+from torch.utils.data import DataLoader
+#import torch.utils.data.dataset as torchDS
+from torch.utils.data import Dataset
+
 
 # With help from https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html
 
@@ -48,10 +60,11 @@ torch.use_deterministic_algorithms(False)
 num_examples = 32
 
 # Random seed for use
-r_seed = torch.normal(num_examples, d_noise)
+r_seed = torch.normal(mean=0, std=d_noise, size = (num_examples,))
 
 # Load training images
-image_arrays, image_names = df_api.get_van_gogh_paintings()
+image_arrays = []
+
 
 # =======================================================
 #                  Helper Functions
@@ -84,7 +97,7 @@ def tensor_array(images: list):
         tens_arr.append(t_add)
     return tens_arr
 
-class images_data(torchDS):
+class images_data(Dataset):
     def __init__(self, images, transform=None, device=None):
         self.images = images
         self.transform = transform
@@ -97,12 +110,14 @@ class images_data(torchDS):
     def __getitem__(self, idx):
         image = self.images[idx]
 
-        i_to_t = img_to_tensor(image, device=self.device)
+        i_to_t = img_to_tensor(image)
+        if self.device:
+            i_to_t=i_to_t.to(self.device)
         return i_to_t
 
 
 dataset = images_data(image_arrays, device=device)
-dataloader = torchDL(dataset, batch_size=1, shuffle=True, num_workers=4)
+dataloader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=4)
 
 x_entropy = nn.BCELoss()
 
@@ -190,7 +205,7 @@ def trainer_function(dfd: Defaker_discriminator, dfg: Defaker_generator, dataloa
             label = torch.ones(real_images.size(0), device=device)
             output = dfd(real_images)
             d_loss_real = x_entropy(output, label)
-            d_loss_real.backward
+            d_loss_real.backward()
 
             noise = torch.randn(real_images.size(0), d_noise, 1, 1, device=device)
             fakers = dfg(noise)
@@ -217,25 +232,30 @@ def trainer_function(dfd: Defaker_discriminator, dfg: Defaker_generator, dataloa
             
 
             if i % 50 == 0:
-                print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
-                % (epoch, tot_epochs, i, len(train_load),
-                d_loss.item(), g_loss.item(), D_x, D_G_z1, D_G_z2))
+                print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f'
+                % (epoch, tot_epochs, i, len(dataset.images),
+                d_loss_total.item(), g_loss.item()))
             
             Gen_losses.append(g_loss.item())
-            Disc_losses.append(d_loss.item())
+            Disc_losses.append(d_loss_total.item())
 
-            if (iters % 500 == 0) or ((epoch == tot_epochs-1) and (i == len(train_load)-1)):
+            if (iters % 500 == 0) or ((epoch == tot_epochs-1) and (i == len(dataset.images)-1)):
                 with torch.no_grad():
                     fake = dfg(noise).detach().cpu()
-                images.append(vutils.make_grid(fake, padding=2, normalize=True))
+                dataset.images.append(vutils.make_grid(fake, padding=2, normalize=True))
 
             iters += 1        
 
 # =======================================================
 
 def run_model(image):
+
+    
+
     dfg = Defaker_generator().to(device)
     dfd = Defaker_discriminator().to(device)
+
+
 
     # Setup use of multiple GPU's if present and capable for Discriminator and Generator 
     if (device.type == "cuda") and (num_examples >1):
@@ -249,5 +269,27 @@ def run_model(image):
     
     tensors_from_imgs: list = tensor_array(image_arrays)
     
+    fake_images = dfg(d_noise)
+    print(f"Fake Images Shape: {fake_images.shape}")
+
+    d_output = dfd(fake_images)
+    print(f"Discriminator Output Shape: {d_output.shape}")
+    print(f"Discriminator Output: {d_output}")
+
+
+    real_images = torch.randn(max_batch_size,3, 256, 256, device=device)
+
+    d_real_output = dfd(real_images)
+    
+    print(f"Real Discriminator Output Shape: {d_real_output.shape}")
+    print(f"Real Discriminator Output: {d_real_output}")
+
     trainer_function(dfd, dfg, dataloader)
-    dfd_opinions: list = []
+    dfd_opinions: list = [True]
+    return model_probability_opinion(dfd_opinions)
+
+test_img_dir = 'F:/GitHub/Deepfake-Defaker/ui/background.jpg'
+for image in os.listdir(test_img_dir):
+    test_img = image        
+test_num = run_model(test_img)
+print(test_num)
