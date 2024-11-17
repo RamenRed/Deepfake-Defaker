@@ -10,6 +10,8 @@ import torchvision.transforms as tv_transforms
 import torchvision.utils as vutils
 import numpy as np
 import random
+from PIL import Image
+import os
 
 import sys
 
@@ -115,6 +117,16 @@ class images_data(Dataset):
             i_to_t=i_to_t.to(self.device)
         return i_to_t
 
+test_img_dir = 'C:/Users/ianfl/OneDrive/Documents/GitHub/Deepfake-Defaker/Test_img'
+if not os.path.exists(test_img_dir):
+    raise FileNotFoundError(f"Directory '{test_img_dir}' does not exist")
+for image_name in os.listdir(test_img_dir):
+    image_path = os.path.join(test_img_dir, image_name)   
+    if os.path.isfile(image_path):
+        image = Image.open(image_path).convert('RGB')
+        image_arrays.append(image)   
+
+
 
 dataset = images_data(image_arrays, device=device)
 dataloader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=4)
@@ -134,8 +146,8 @@ def weights_init(weights_inst):
 
 class Defaker_generator(nn.Module):
     def __init__(self):
-        super(Defaker_generator, self).__init__(self)
-        optimizer = opt.Adam(self.parameters(), l_rate)
+        super(Defaker_generator, self).__init__()
+        self.loss_fn = nn.BCELoss()
         self.model = nn.Sequential(
             nn.ConvTranspose2d(100, 64 * 8, 4, 1, 0, bias=False),
             nn.BatchNorm2d(64 * 8),
@@ -153,16 +165,16 @@ class Defaker_generator(nn.Module):
             nn.Tanh()
         )
 
-    def loss(fake):
-        return x_entropy(torch.ones_like(fake), fake)
+    def loss(self, fake):
+        return self.loss_fn(torch.ones_like(fake), fake)
     
     def forward(self, gen_in):
         return self.model(gen_in)
 
 class Defaker_discriminator(nn.Module):
     def __init__(self):
-        super(Defaker_discriminator, self).__init__(self)
-        self.optimizer = opt.Adam(self.parameters(), l_rate)
+        super(Defaker_discriminator, self).__init__()
+        self.loss_fn = nn.BCELoss()
         self.model = nn.Sequential(
             nn.Conv2d(3, 64, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
@@ -182,26 +194,36 @@ class Defaker_discriminator(nn.Module):
     def forward(self, discrim_in):
         return self.model(discrim_in)
     
-    def loss(real, fake):
-        r_loss = x_entropy(torch.ones_like(real), real)
-        f_loss = x_entropy(torch.zeros_like(fake), fake)
-        t_loss = r_loss + f_loss
-        return f_loss
+    def loss(self, real, fake):
+
+        real_labels = torch.ones_like(real)
+        real_loss = self.loss_fn(real, real_labels)
+
+        fake_labels = torch.zeros_like(fake)
+        fake_loss = self.loss_fn(fake, fake_labels)
+
+        total_loss = real_loss + fake_loss
+        return total_loss
+        
+
+        
+    
     
 
 
 
-def trainer_function(dfd: Defaker_discriminator, dfg: Defaker_generator, dataloader):
+def trainer_function(dfd: Defaker_discriminator, dfg: Defaker_generator, dataloader, optimizer_disc, optimizer_gen):
     noise = torch.randn(max_batch_size, d_noise, 1, 1, device=device)
     Gen_losses = []
     Disc_losses = []
+    iters = 0
     for epoch in range(tot_epochs):
         for i, real_images in enumerate(dataloader):
             
             real_images = real_images.to(device)
 
             #Real image batch
-            dfd.optimizer.zero_grad()
+            optimizer_disc.zero_grad()
             label = torch.ones(real_images.size(0), device=device)
             output = dfd(real_images)
             d_loss_real = x_entropy(output, label)
@@ -214,24 +236,25 @@ def trainer_function(dfd: Defaker_discriminator, dfg: Defaker_generator, dataloa
 
             d_loss_fake = x_entropy(output, label)
             d_loss_fake.backward()
+            optimizer_disc.step()
             
             d_loss_total = d_loss_real + d_loss_fake
 
             #Fake image batch
-            dfg.optimizer.zero_grad()
+            optimizer_gen.zero_grad()
             label.fill_(1)
             output = dfd(fakers)
 
             g_loss = x_entropy(output, label)
             g_loss.backward()
-            dfg.optimizer.step()
+            optimizer_gen.step()
             
             
 
             
             
 
-            if i % 50 == 0:
+            if iters % 50 == 0:
                 print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f'
                 % (epoch, tot_epochs, i, len(dataset.images),
                 d_loss_total.item(), g_loss.item()))
@@ -255,21 +278,30 @@ def run_model(image):
     dfg = Defaker_generator().to(device)
     dfd = Defaker_discriminator().to(device)
 
-
+    #optimizer_gen = opt.Adam(dfg.parameters(), lr=l_rate)
+    #optimizer_disc = opt.Adam(dfd.parameters(), lr=l_rate)
 
     # Setup use of multiple GPU's if present and capable for Discriminator and Generator 
     if (device.type == "cuda") and (num_examples >1):
-        dfg = torch.nn.parallel.DistributedDataParallel
+        dfg = torch.nn.parallel.DistributedDataParallel(dfg)
     if (device.type == "cuda") and (num_examples >1):
-        dfd = torch.nn.parallel.DistributedDataParallel
+        dfd = torch.nn.parallel.DistributedDataParallel(dfd)
 
     # Initialize Weights
-    dfg.apply(weights_init)
-    dfd.apply(weights_init)
+    #dfg.apply(weights_init)
+    #dfd.apply(weights_init)
     
-    tensors_from_imgs: list = tensor_array(image_arrays)
+    #dataset = images_data(image_arrays, device=device)
+    #dataloader = DataLoader(dataset, batch_size=max_batch_size, shuffle=True, num_workers=4)
     
-    fake_images = dfg(d_noise)
+
+    print("Generator Architecture:")
+    print(dfg)
+    print("\nDiscriminator Architecture:")
+    print(dfd)
+
+    noise = torch.randn(max_batch_size, d_noise, 1, 1, device=device)
+    fake_images = dfg(noise)
     print(f"Fake Images Shape: {fake_images.shape}")
 
     d_output = dfd(fake_images)
@@ -278,18 +310,17 @@ def run_model(image):
 
 
     real_images = torch.randn(max_batch_size,3, 256, 256, device=device)
+    print(f"Real Images Shape: {real_images.shape}")
 
     d_real_output = dfd(real_images)
     
     print(f"Real Discriminator Output Shape: {d_real_output.shape}")
     print(f"Real Discriminator Output: {d_real_output}")
 
-    trainer_function(dfd, dfg, dataloader)
+    #trainer_function(dfd, dfg, dataloader, optimizer_disc, optimizer_gen)
     dfd_opinions: list = [True]
-    return model_probability_opinion(dfd_opinions)
+    #return model_probability_opinion(dfd_opinions)
+    return "model ran without errors"
 
-test_img_dir = 'F:/GitHub/Deepfake-Defaker/ui/background.jpg'
-for image in os.listdir(test_img_dir):
-    test_img = image        
-test_num = run_model(test_img)
+test_num = run_model(image_arrays)
 print(test_num)
