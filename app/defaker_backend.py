@@ -18,7 +18,6 @@ import sys
 MY_UTILS_PATH = 'F:/GitHub/Deepfake-Defaker/app'
 if not MY_UTILS_PATH in sys.path:
     sys.path.append(MY_UTILS_PATH)
-import defaker_api as df_api
 
 
 #import app.defaker_api as df_api
@@ -65,8 +64,26 @@ num_examples = 32
 r_seed = torch.normal(mean=0, std=d_noise, size = (num_examples,))
 
 # Load training images
-image_arrays = []
+images_from_kaggle = []
 
+for foldername, subfolders, filenames in os.walk('./van-gogh-dataset'):
+    for filename in filenames:
+        if filename.endswith('.jpg'):
+            file_path = os.path.join(foldername, filename)
+            
+            # Load the image
+            image = Image.open(file_path)
+
+            # Convert to NumPy array and add to image_arrays
+            np_image = np.array(image)
+            np_image.resize(65536)
+            np_image.reshape(256, 256)
+            images_from_kaggle.append(np_image)
+
+# Convert list of images to a NumPy array (ensure all images have the same size)
+image_numpy_arrays = np.stack(images_from_kaggle)
+
+image_arrays = torch.from_numpy(image_numpy_arrays)
 
 # =======================================================
 #                  Helper Functions
@@ -85,11 +102,8 @@ def gan_logic(dfg, dfd):
     pass
 
 def img_to_tensor(image):
-    t_form = transforms.Compose([
-        transforms.Resize((256,256)),
-        transforms.ToTensor()
-    ])
-    t_img = t_form(image)
+    t_form = np.array(image)
+    t_img = torch.from_numpy(t_form)
     return t_img
 
 def tensor_array(images: list):
@@ -117,14 +131,15 @@ class images_data(Dataset):
             i_to_t=i_to_t.to(self.device)
         return i_to_t
 
-test_img_dir = 'C:/Users/ianfl/OneDrive/Documents/GitHub/Deepfake-Defaker/Test_img'
-if not os.path.exists(test_img_dir):
-    raise FileNotFoundError(f"Directory '{test_img_dir}' does not exist")
-for image_name in os.listdir(test_img_dir):
-    image_path = os.path.join(test_img_dir, image_name)   
-    if os.path.isfile(image_path):
-        image = Image.open(image_path).convert('RGB')
-        image_arrays.append(image)   
+#Uncomment if needed for testing
+#test_img_dir = './background.jpg'
+#if not os.path.exists(test_img_dir):
+    #raise FileNotFoundError(f"Directory '{test_img_dir}' does not exist")
+#for image_name in os.listdir(test_img_dir):
+    #image_path = os.path.join(test_img_dir, image_name)   
+    #if os.path.isfile(image_path):
+        #image = Image.open(image_path).convert('RGB')
+        #image_arrays.append(image)   
 
 
 
@@ -278,8 +293,8 @@ def run_model(image):
     dfg = Defaker_generator().to(device)
     dfd = Defaker_discriminator().to(device)
 
-    #optimizer_gen = opt.Adam(dfg.parameters(), lr=l_rate)
-    #optimizer_disc = opt.Adam(dfd.parameters(), lr=l_rate)
+    optimizer_gen = opt.Adam(dfg.parameters(), lr=l_rate)
+    optimizer_disc = opt.Adam(dfd.parameters(), lr=l_rate)
 
     # Setup use of multiple GPU's if present and capable for Discriminator and Generator 
     if (device.type == "cuda") and (num_examples >1):
@@ -291,8 +306,8 @@ def run_model(image):
     #dfg.apply(weights_init)
     #dfd.apply(weights_init)
     
-    #dataset = images_data(image_arrays, device=device)
-    #dataloader = DataLoader(dataset, batch_size=max_batch_size, shuffle=True, num_workers=4)
+    dataset = images_data(image_arrays, device=device)
+    dataloader = DataLoader(dataset, batch_size=max_batch_size, shuffle=True, num_workers=4)
     
 
     print("Generator Architecture:")
@@ -317,10 +332,11 @@ def run_model(image):
     print(f"Real Discriminator Output Shape: {d_real_output.shape}")
     print(f"Real Discriminator Output: {d_real_output}")
 
-    #trainer_function(dfd, dfg, dataloader, optimizer_disc, optimizer_gen)
+    trainer_function(dfd, dfg, dataloader, optimizer_disc, optimizer_gen)
+    
     dfd_opinions: list = [True]
-    #return model_probability_opinion(dfd_opinions)
-    return "model ran without errors"
+    return model_probability_opinion(dfd_opinions)
+    #return "model ran without errors"
 
 test_num = run_model(image_arrays)
 print(test_num)
