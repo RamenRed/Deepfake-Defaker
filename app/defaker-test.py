@@ -4,7 +4,8 @@ import torch.nn as nn
 import torch.nn.parallel
 import torch.nn.functional as F
 import torch.optim as optim
-from torchvision import *
+import torchvision
+import torchvision.transforms as transforms
 import numpy as np
 import random
 from PIL import Image
@@ -18,9 +19,12 @@ if not MY_UTILS_PATH in sys.path:
 
 
 #import torch.utils.data.dataloader
-from torch.utils.data import DataLoader
+
+#from torch.utils.data import DataLoader
+
 #import torch.utils.data.dataset
-from torch.utils.data import Dataset
+
+#from torch.utils.data import Dataset
 
 # =======================================================
 #                 Initial Parameters
@@ -55,11 +59,13 @@ num_examples = 32
 
 # Random seed for use
 r_seed = torch.normal(mean=0, std=d_noise, size = (num_examples,))
-
+'''
 # Load training images
 images_from_kaggle = []
+labels = []
 
-for foldername, subfolders, filenames in os.walk('./van-gogh-dataset'):
+
+for foldername, subfolders, filenames in os.walk('./ui'):
     for filename in filenames:
         if filename.endswith('.jpg'):
             file_path = os.path.join(foldername, filename)
@@ -73,10 +79,12 @@ for foldername, subfolders, filenames in os.walk('./van-gogh-dataset'):
             np_image.reshape(256, 256)
             images_from_kaggle.append(np_image)
 
+            if 'ui' in foldername.lower():
+                labels.append(1)
+            elif 'fake' in foldername.lower():
+                labels.append(0)
+'''
 # Convert list of images to a NumPy array (ensure all images have the same size)
-image_numpy_arrays = np.stack(images_from_kaggle)
-
-image_arrays = torch.from_numpy(image_numpy_arrays)
 
 # =======================================================
 #                  Helper Functions
@@ -91,37 +99,12 @@ def model_probability_opinion(opinions: list): # Used to calculate how many time
         cycle_count += 1
     return (dfd_average/len(opinions)) * 100
 
-def img_to_tensor(image):
-    t_form = np.array(image)
-    t_form.resize(65536)
-    t_form.reshape(256, 256)
-    t_img = torch.from_numpy(t_form)
-    return t_img
+transform = transforms.Compose(
+    [transforms.Resize((32,32)),
+     transforms.ToTensor(),
+     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-def tensor_array(images: list):
-    tens_arr = []
-    for each in images:
-        t_add = img_to_tensor(each)
-        tens_arr.append(t_add)
-    return tens_arr
 
-class images_data(Dataset):
-    def __init__(self, images, transform=None, device=None):
-        self.images = images
-        self.transform = transform
-        self.device = device
-
-    def __len__(self):
-        return len(self.images)
-    
-
-    def __getitem__(self, idx):
-        image = self.images[idx]
-
-        i_to_t = img_to_tensor(image)
-        if self.device:
-            i_to_t=i_to_t.to(self.device)
-        return i_to_t
 
 #Uncomment if needed for testing
 #test_img_dir = './background.jpg'
@@ -134,10 +117,13 @@ class images_data(Dataset):
         #image_arrays.append(image)   
 
 
+trainset = torchvision.datasets.ImageFolder(root='C:/Users/ianfl/OneDrive/Documents/GitHub/Deepfake-Defaker/Test_images', transform=transform)
 
-dataset = images_data(image_arrays, device=device)
-dataloader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=0)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=4, shuffle=True, num_workers=0)
 
+
+
+classes = ('real', 'fake')
 
 '''
 def weights_init(weights_inst):
@@ -192,10 +178,9 @@ x_entropy = nn.CrossEntropyLoss()
 optimizer = optim.SGD(defaker.parameters(), lr=l_rate, momentum=0.9)  
     
 
-for epoch in torch.arange(0, tot_epochs):
+for epoch in range(0, 2):
     running_loss = 0
-    for i, data in enumerate(dataloader, 0):
-        print(data)
+    for i, data in enumerate(trainloader, 0):
         inputs, labels = data
         optimizer.zero_grad()
         output = defaker(inputs)
@@ -216,18 +201,17 @@ def run_model(image):
     # Initialize Weights
 
     #Display Architecture in terminal for testing purposes, not shown to user
-    print("Defaker_CNN Architecture:")
-    print(defaker)
 
     # Convert image to tensor
-    tensor_img = img_to_tensor(image)
-    
-    #noise = torch.randn(max_batch_size, d_noise, 1, 1, device=device)
-    #real_images = torch.randn(max_batch_size,3, 256, 256, device=device)
+
+    image = image.resize((32,32))
+
+    image_tensor = transform(image).unsqueeze(0)
+
     dfd_opinions = []
     with torch.no_grad():
         for _ in range(0, 50):
-            opinion_value = defaker(tensor_img)
+            opinion_value = defaker(image_tensor)
             _, test_val = torch.max(opinion_value.data, 1)
             if test_val.item() > 0.5:
                 dfd_opinions.append(True)
