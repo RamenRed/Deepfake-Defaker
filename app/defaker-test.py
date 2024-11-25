@@ -224,4 +224,4 @@ if __name__ == '__main__':
     test_img_dir = './ui/background.jpg'
     test_img = Image.open(test_img_dir)
     test_num = run_model(test_img)
-    print(test_num) # Print test number
+    print(test_num) # Print test
