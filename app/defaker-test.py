@@ -117,7 +117,7 @@ transform = transforms.Compose(
         #image_arrays.append(image)   
 
 
-trainset = torchvision.datasets.ImageFolder(root='C:/Users/ianfl/OneDrive/Documents/GitHub/Deepfake-Defaker/Test_images', transform=transform)
+trainset = torchvision.datasets.ImageFolder(root='./Test_images', transform=transform)
 
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=4, shuffle=True, num_workers=0)
 
