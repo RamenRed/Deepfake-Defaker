@@ -213,7 +213,8 @@ def run_model(image):
         for _ in range(0, 50):
             opinion_value = defaker(image_tensor)
             _, test_val = torch.max(opinion_value.data, 1)
-            if test_val.item() > 0.5:
+            print(test_val.item())
+            if test_val.item() < 0.5:
                 dfd_opinions.append(True)
             else:
                 dfd_opinions.append(False)
