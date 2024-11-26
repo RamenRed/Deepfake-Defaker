@@ -1,7 +1,8 @@
 let imageInput = document.getElementById("formFile");
 const img = document.querySelector('#imagePreview');
 // img.style.display = "none";
-imageInput.addEventListener("change", function() {
+imageInput.addEventListener("change", function(event) {
+    event.preventDefault();
     img.style.display = "block";
     const choosedFile = this.files[0];
     if (choosedFile) {
@@ -15,7 +16,7 @@ imageInput.addEventListener("change", function() {
         // Send the image to the Python backend
         const formData = new FormData();
         formData.append('image', choosedFile);
-
+        event.preventDefault();
         fetch('http://localhost:5000/upload', { // Update the URL to your Python endpoint
             method: 'POST',
             body: formData
@@ -39,4 +40,5 @@ imageInput.addEventListener("change", function() {
             resultDisplay.innerText = "An error occurred while processing the image.";
         });
     }
+    event.preventDefault();
 })

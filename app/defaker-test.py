@@ -215,10 +215,11 @@ def run_model(image):
             probabilities = F.softmax(opinion_value, dim=1)
 
             predicted_class = torch.argmax(probabilities, dim=1).item()
-
+            print(predicted_class == 1)
             dfd_opinions.append(predicted_class == 1)
-
     fake_probability = model_probability_opinion(dfd_opinions)
+    print("Finished Running")
+    print("Model Certainty that image is fake: " + str(fake_probability))
     return fake_probability
     #return "model ran without errors"
 
@@ -249,7 +250,9 @@ async def run_model_with_image(file: UploadFile = File(...)):
     try:
         with open(file_location, "wb") as f:
             f.write(await file.read())
-        return {"model_opinion_int": 432}
+        test_img = Image.open(file_location)
+        test_num = run_model(test_img)
+        return {test_num}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error saving file: {e}")

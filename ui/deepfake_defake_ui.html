@@ -28,7 +28,7 @@
         </div>
     </nav>
 
-    <form id="subButton">
+    <form>
         <div class="row justify-content-center d-flex mt-5 mb-4">
             <div class="col col-4 bg-light shadow">
                 <h5 class="card-title m-5 text-center text-primary">Please Add the image to Analyze</h5>
@@ -39,7 +39,7 @@
                     <label for="formFile" class="form-label">Upload an Image</label>
                     <input class="form-control" type="file" id="formFile">
                 </div>
-                <button id="submit-image" type="submit" class="btn btn-primary mx-5 my-3">Submit</button>
+                <button id="submit-image" type="button" class="btn btn-primary mx-5 my-3">Submit</button>
                 <span class="text-danger mx-5 mb-5">AI Generated: <var id="opinionDisplay">0</var>% likelihood</span>
             </div>
         </div>
@@ -49,8 +49,7 @@
         // Preview selected image
         let imageInput = document.getElementById("formFile");
         const img = document.getElementById("imagePreview");
-        
-        imageInput.addEventListener("change", function() {
+        imageInput.addEventListener("change", function(event) {           
             const choosedFile = this.files[0];
             if (choosedFile) {
                 const reader = new FileReader();
@@ -59,33 +58,35 @@
                 });
                 reader.readAsDataURL(choosedFile);
             }
+            event.preventDefault(); 
         });
 
         // Handle image submission and display AI likelihood score
-        document.getElementById("submit-image").onclick = async function() {
+        document.getElementById("submit-image").onclick = async function(event) {
+            event.preventDefault();
             const fileInput = document.getElementById("formFile");
             const file = fileInput.files[0];
-
             if (!file) {
                 alert("Please select an image first.");
                 return;
             }
-
             const formData = new FormData();
             formData.append("file", file);
-            document.getElementById("opinionDisplay").innerHTML = 42;
-            
             try {
+                alert("Check number before refresh.");
                 const response = await fetch("http://localhost:5000/model", {
                     method: "POST",
                     body: formData
                 });
-
-                const data = await response.json();
-                document.getElementById("opinionDisplay").innerHTML = data.model_opinion_int;
+                alert("The post worked.");
+                const data = await response.json;
+                alert("Check number before refresh.", data);
+                document.getElementById("opinionDisplay").innerHTML = data;
+                alert("Check number before refresh.");
             } catch (error) {
                 console.error("Error:", error);
             }
+            event.preventDefault();
         };
     </script>
     <style>
