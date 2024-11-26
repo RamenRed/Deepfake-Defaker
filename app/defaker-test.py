@@ -15,6 +15,8 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse
 from uvicorn import *
 import sys
+from fastapi.middleware.cors import CORSMiddleware
+from pathlib import Path
 
 MY_UTILS_PATH = './app'
 if not MY_UTILS_PATH in sys.path:
@@ -114,7 +116,7 @@ transform = transforms.Compose(
         #image_arrays.append(image)   
 
 
-trainset = torchvision.datasets.ImageFolder(root='C:/Users/ianfl/OneDrive/Documents/GitHub/Deepfake-Defaker/Test_images', transform=transform)
+trainset = torchvision.datasets.ImageFolder(root='./Test_images', transform=transform)
 
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=72, shuffle=True, num_workers=0)
 
@@ -247,12 +249,13 @@ async def run_model_with_image(file: UploadFile = File(...)):
     try:
         with open(file_location, "wb") as f:
             f.write(await file.read())
-        return {"model_opinion_int": 42, "file_path": str(file_location)}
+        return {"model_opinion_int": 432}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error saving file: {e}")
+    # return {"model_opinion_int": 42}
 
 
 
-if __name__ == '__main__':
+#if __name__ == '__main__':
     # uvicorn.run("main:app", host="127.0.0.1", port=5000, reload=True)
