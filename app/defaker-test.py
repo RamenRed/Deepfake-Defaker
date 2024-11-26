@@ -1,3 +1,4 @@
+from flask import Flask, request, jsonify
 from torch import *
 import torch
 import torch.nn as nn
@@ -10,7 +11,9 @@ import numpy as np
 import random
 from PIL import Image
 import os
-
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import HTMLResponse
+from uvicorn import *
 import sys
 
 MY_UTILS_PATH = './app'
@@ -18,13 +21,7 @@ if not MY_UTILS_PATH in sys.path:
     sys.path.append(MY_UTILS_PATH)
 
 
-#import torch.utils.data.dataloader
-
-#from torch.utils.data import DataLoader
-
-#import torch.utils.data.dataset
-
-#from torch.utils.data import Dataset
+app = FastAPI()
 
 # =======================================================
 #                 Initial Parameters
@@ -117,9 +114,9 @@ transform = transforms.Compose(
         #image_arrays.append(image)   
 
 
-trainset = torchvision.datasets.ImageFolder(root='./Test_images', transform=transform)
+trainset = torchvision.datasets.ImageFolder(root='C:/Users/ianfl/OneDrive/Documents/GitHub/Deepfake-Defaker/Test_images', transform=transform)
 
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=4, shuffle=True, num_workers=0)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=72, shuffle=True, num_workers=0)
 
 
 
@@ -212,17 +209,50 @@ def run_model(image):
     with torch.no_grad():
         for _ in range(0, 50):
             opinion_value = defaker(image_tensor)
-            _, test_val = torch.max(opinion_value.data, 1)
-            print(test_val.item())
-            if test_val.item() < 0.5:
-                dfd_opinions.append(True)
-            else:
-                dfd_opinions.append(False)
-    return model_probability_opinion(dfd_opinions)
+            
+            probabilities = F.softmax(opinion_value, dim=1)
+
+            predicted_class = torch.argmax(probabilities, dim=1).item()
+
+            dfd_opinions.append(predicted_class == 1)
+
+    fake_probability = model_probability_opinion(dfd_opinions)
+    return fake_probability
     #return "model ran without errors"
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:5000"],  # Replace with your frontend origin
+    allow_methods=["POST"],
+    allow_headers=["*"],
+)
+
+@app.get("/",response_class=HTMLResponse)
+def read_root():
+    return """
+        <html>
+            <body>
+                <h2>Type /model</h2>
+            </body>
+        </html>
+    """
+
+UPLOAD_FOLDER = Path("uploads") 
+UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+
+
+@app.post("/model")
+async def run_model_with_image(file: UploadFile = File(...)):
+    file_location = UPLOAD_FOLDER / file.filename  
+    try:
+        with open(file_location, "wb") as f:
+            f.write(await file.read())
+        return {"model_opinion_int": 42, "file_path": str(file_location)}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error saving file: {e}")
+
+
+
 if __name__ == '__main__':
-    test_img_dir = './Test_images/real/Coal_Barges.jpg'
-    test_img = Image.open(test_img_dir)
-    test_num = run_model(test_img)
-    print(test_num) # Print test
+    # uvicorn.run("main:app", host="127.0.0.1", port=5000, reload=True)

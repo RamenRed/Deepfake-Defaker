@@ -74,7 +74,7 @@
             formData.append("file", file);
 
             try {
-                const response = await fetch("http://localhost:8000/model", {
+                const response = await fetch("http://localhost:5000/model", {
                     method: "POST",
                     body: formData
                 });
